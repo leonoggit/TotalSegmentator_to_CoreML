@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/devcontainers/python:3.9-bullseye
-      options: --gpus all --shm-size 8gb
+      options: --shm-size 8gb
     
     steps:
     - name: Checkout code
