@@ -66,7 +66,8 @@ class ConversionPipeline:
                  precision: str = "fp16",
                  batch_size: int = 1,
                  log_dir: str = "logs",
-                 cache_dir: str = ".cache"):
+                 cache_dir: str = ".cache",
+                 log_level: str = "INFO"):
         
         self.use_gpu = use_gpu and check_gpu_available()
         self.precision = precision
@@ -79,7 +80,7 @@ class ConversionPipeline:
         self.cache_dir.mkdir(exist_ok=True)
         
         # Setup logging
-        self.logger = setup_logging(self.log_dir / "conversion.log")
+        self.logger = setup_logging(self.log_dir / "conversion.log", level=log_level)
         
         # Initialize components
         self.converter = TotalSegmentatorConverter(
@@ -431,6 +432,13 @@ def main():
         action="store_false",
         help="Skip optimization"
     )
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        default="INFO",
+        help="Logging level"
+    )
     
     args = parser.parse_args()
     
@@ -442,7 +450,8 @@ def main():
     pipeline = ConversionPipeline(
         use_gpu=args.gpu and not args.cpu_only,
         precision=args.precision,
-        batch_size=args.batch_size
+        batch_size=args.batch_size,
+        log_level=args.log_level
     )
     
     # Run conversion

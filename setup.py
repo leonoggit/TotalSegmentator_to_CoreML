@@ -26,8 +26,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/yourusername/TotalSegmentator_to_CoreML",
-    packages=find_packages(where="src"),
-    package_dir={"": "src"},
+    packages=find_packages(),
     python_requires=">=3.9",
     install_requires=requirements,
     extras_require={
