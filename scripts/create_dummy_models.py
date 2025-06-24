@@ -45,7 +45,10 @@ def create_dummy_models(output_dir: Path):
         
         # Initialize with random weights
         for param in model.parameters():
-            nn.init.xavier_uniform_(param)
+            if param.dim() > 1:
+                nn.init.xavier_uniform_(param)
+            else:
+                nn.init.uniform_(param, -0.1, 0.1)
         
         # Save state dict
         torch.save(model.state_dict(), output_path)
