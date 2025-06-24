@@ -45,8 +45,12 @@ jobs:
     - name: Install dependencies for model preparation
       run: |
         python -m pip install --upgrade pip
+        # Install CPU-only torch without MKL to avoid MKL-DNN issues
         pip install torch==2.1.0 torchvision --index-url https://download.pytorch.org/whl/cpu
         pip install numpy
+        # Set environment variable to disable MKL
+        export MKL_NUM_THREADS=1
+        export OMP_NUM_THREADS=1
     
     - name: Create directories
       run: |

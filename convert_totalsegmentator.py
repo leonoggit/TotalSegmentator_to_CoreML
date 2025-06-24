@@ -225,7 +225,8 @@ class ConversionPipeline:
         
         # Load weights
         model.load_state_dict(state_dict)
-        model.to(self.device)
+        # Force CPU mode to avoid MKL-DNN issues during conversion
+        model.cpu()
         model.eval()
         
         return model
@@ -233,8 +234,8 @@ class ConversionPipeline:
     def _create_example_input(self, shape: Tuple[int, ...]) -> torch.Tensor:
         """Create example input for tracing"""
         
-        # Create realistic CT data (-1000 to 1000 HU)
-        data = torch.randn(shape, device=self.device) * 500
+        # Create realistic CT data on CPU to avoid device issues
+        data = torch.randn(shape, device='cpu') * 500
         data = torch.clamp(data, -1000, 1000)
         
         # Normalize

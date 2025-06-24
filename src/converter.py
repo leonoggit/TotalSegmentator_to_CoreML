@@ -52,12 +52,16 @@ class TotalSegmentatorConverter:
         
         self.logger.info(f"Starting conversion for {model_name}")
         
-        # Ensure model is in eval mode
+        # Ensure model is in eval mode and on CPU to avoid MKL-DNN issues
         pytorch_model.eval()
         
-        # Move to appropriate device
-        pytorch_model = pytorch_model.to(self.device)
-        example_input = example_input.to(self.device)
+        # Force CPU for conversion to avoid MKL-DNN operators
+        pytorch_model = pytorch_model.cpu()
+        example_input = example_input.cpu()
+        
+        # Disable MKL-DNN if available
+        if hasattr(torch, '_C') and hasattr(torch._C, '_set_mkldnn_enabled'):
+            torch._C._set_mkldnn_enabled(False)
         
         # Trace the model
         traced_model = self._trace_model(pytorch_model, example_input)

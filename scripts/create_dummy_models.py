@@ -58,8 +58,16 @@ def create_dummy_models(output_dir: Path):
             else:
                 nn.init.uniform_(param, -0.1, 0.1)
         
-        # Save state dict
-        torch.save(model.state_dict(), output_path)
+        # Ensure model is in CPU mode and not using MKL-DNN
+        model = model.cpu()
+        model.eval()
+        
+        # Save state dict with _use_new_zipfile_serialization for compatibility
+        torch.save(
+            model.state_dict(), 
+            output_path, 
+            _use_new_zipfile_serialization=False
+        )
         
         print(f"Saved {output_path}")
     
