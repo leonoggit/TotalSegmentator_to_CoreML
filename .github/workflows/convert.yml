@@ -38,7 +38,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     
     - name: Setup Python environment
       run: |
@@ -78,7 +78,7 @@ jobs:
         fi
     
     - name: Upload CoreML models
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coreml-models-${{ github.event.inputs.precision }}
         path: models/coreml/*.mlpackage
@@ -86,7 +86,7 @@ jobs:
     
     - name: Upload conversion logs
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: conversion-logs
         path: logs/
@@ -94,7 +94,7 @@ jobs:
     
     - name: Upload validation reports
       if: github.event.inputs.validate == 'true'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: validation-reports
         path: validation_reports/
@@ -107,10 +107,10 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     
     - name: Download CoreML models
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: coreml-models-${{ github.event.inputs.precision }}
         path: models/coreml
