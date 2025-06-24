@@ -139,6 +139,7 @@ jobs:
         pip install matplotlib
         pip install pandas
         pip install Pillow
+        pip install onnx
         
         # Install the package in development mode
         pip install -e .
@@ -160,26 +161,28 @@ jobs:
         echo "Starting CoreML conversion..."
         
         # Double-check MKL is disabled
-        python -c "import torch; print(f'MKL-DNN enabled: {torch._C._get_mkldnn_enabled() if hasattr(torch._C, '_get_mkldnn_enabled') else 'Unknown'}')"
+        python -c "import torch; print('MKL-DNN enabled:', torch._C._get_mkldnn_enabled() if hasattr(torch._C, '_get_mkldnn_enabled') else 'Unknown')"
         
         # Try direct conversion first
+        CONVERSION_SUCCESS=0
         if [ "${{ github.event.inputs.model }}" = "all" ]; then
           python convert_totalsegmentator.py --all \
             --precision ${{ github.event.inputs.precision }} \
             ${{ github.event.inputs.validate && '--validate' || '--no-validate' }} \
             --cpu-only \
-            --log-level DEBUG || echo "Direct conversion failed, trying ONNX fallback..."
+            --log-level DEBUG || CONVERSION_SUCCESS=$?
         else
           python convert_totalsegmentator.py \
             --model ${{ github.event.inputs.model }} \
             --precision ${{ github.event.inputs.precision }} \
             ${{ github.event.inputs.validate && '--validate' || '--no-validate' }} \
             --cpu-only \
-            --log-level DEBUG || echo "Direct conversion failed, trying ONNX fallback..."
+            --log-level DEBUG || CONVERSION_SUCCESS=$?
         fi
         
         # If direct conversion failed, try ONNX fallback
-        if [ $? -ne 0 ]; then
+        if [ $CONVERSION_SUCCESS -ne 0 ]; then
+          echo "Direct conversion failed with exit code $CONVERSION_SUCCESS"
           echo "Using ONNX fallback conversion method..."
           python scripts/convert_via_onnx.py
         fi
