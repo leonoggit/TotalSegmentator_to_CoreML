@@ -152,6 +152,18 @@ jobs:
       run: |
         mkdir -p models/coreml logs validation_reports
     
+    - name: Test MKL-DNN and conversion setup
+      env:
+        PYTORCH_DISABLE_MKL: '1'
+        MKL_NUM_THREADS: '1'
+        OMP_NUM_THREADS: '1'
+      run: |
+        echo "Testing MKL-DNN configuration..."
+        python scripts/test_mkldnn.py
+        echo ""
+        echo "Testing minimal conversion..."
+        python scripts/test_conversion.py
+    
     - name: Convert models
       env:
         PYTORCH_DISABLE_MKL: '1'
