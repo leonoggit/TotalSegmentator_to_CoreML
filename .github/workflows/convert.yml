@@ -85,6 +85,7 @@ jobs:
           convert_totalsegmentator.py
           requirements.txt
           setup.py
+          README.md
         retention-days: 7
 
   convert-to-coreml:
@@ -120,6 +121,12 @@ jobs:
         pip install numpy
         pip install tqdm
         pip install colorlog
+        pip install nibabel
+        pip install SimpleITK
+        pip install scipy
+        pip install matplotlib
+        pip install pandas
+        pip install Pillow
         
         # Install the package in development mode
         pip install -e .
