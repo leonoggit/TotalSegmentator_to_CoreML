@@ -7,9 +7,17 @@ import torch
 import torch.nn as nn
 from pathlib import Path
 import sys
-sys.path.append(str(Path(__file__).parent.parent))
 
-from src.models import create_totalsegmentator_model
+# Add parent directory to path to import from src
+parent_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(parent_dir))
+
+# Import directly from the module file to avoid __init__.py imports
+import importlib.util
+spec = importlib.util.spec_from_file_location("models", parent_dir / "src" / "models.py")
+models_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(models_module)
+create_totalsegmentator_model = models_module.create_totalsegmentator_model
 
 
 MODEL_CONFIGS = {
