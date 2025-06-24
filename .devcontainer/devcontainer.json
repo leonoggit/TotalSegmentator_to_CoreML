@@ -1,0 +1,64 @@
+{
+  "name": "TotalSegmentator to CoreML",
+  "image": "mcr.microsoft.com/devcontainers/python:3.9-bullseye",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.9"
+    },
+    "ghcr.io/devcontainers/features/nvidia-cuda:1": {
+      "cudaVersion": "11.7",
+      "installCudnn": true
+    }
+  },
+  
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "64gb",
+    "gpu": "optional"
+  },
+  
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "GitHub.copilot",
+        "GitHub.copilot-chat"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true,
+        "python.formatting.provider": "black",
+        "python.testing.pytestEnabled": true,
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  
+  "forwardPorts": [8888, 6006],
+  
+  "mounts": [
+    "source=${localWorkspaceFolder}/models,target=/workspace/models,type=bind,consistency=cached",
+    "source=${localWorkspaceFolder}/data,target=/workspace/data,type=bind,consistency=cached"
+  ],
+  
+  "remoteUser": "vscode",
+  
+  "runArgs": [
+    "--gpus=all",
+    "--shm-size=8gb"
+  ],
+  
+  "containerEnv": {
+    "PYTORCH_CUDA_ALLOC_CONF": "max_split_size_mb:512",
+    "CUDA_VISIBLE_DEVICES": "0"
+  }
+}
