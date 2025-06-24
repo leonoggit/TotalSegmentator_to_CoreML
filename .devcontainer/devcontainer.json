@@ -1,34 +1,38 @@
 {
   "name": "TotalSegmentator to CoreML",
-  "image": "mcr.microsoft.com/devcontainers/python:3.9-bullseye",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
   
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.9"
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "installOhMyZsh": true
     },
-    "ghcr.io/devcontainers/features/nvidia-cuda:1": {
-      "cudaVersion": "11.7",
-      "installCudnn": true
-    }
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
   
+  // Optimized for GitHub Codespaces free tier (2-core, 8GB RAM, 32GB storage)
   "hostRequirements": {
-    "cpus": 4,
-    "memory": "16gb",
-    "storage": "64gb",
-    "gpu": "optional"
+    "cpus": 2,
+    "memory": "8gb",
+    "storage": "32gb"
   },
   
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-python.python",
-        "ms-python.vscode-pylance",
+        "ms-python.pylint",
+        "ms-python.black-formatter",
+        "ms-python.isort",
         "ms-toolsai.jupyter",
-        "GitHub.copilot",
-        "GitHub.copilot-chat"
+        "ms-toolsai.vscode-jupyter-cell-tags",
+        "github.copilot",
+        "github.copilot-chat",
+        "ms-vscode.vscode-json",
+        "redhat.vscode-yaml"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/usr/local/bin/python",
@@ -36,29 +40,41 @@
         "python.linting.pylintEnabled": true,
         "python.formatting.provider": "black",
         "python.testing.pytestEnabled": true,
-        "editor.formatOnSave": true
+        "editor.formatOnSave": true,
+        "jupyter.askForKernelRestart": false,
+        "files.associations": {
+          "*.mlmodel": "xml"
+        }
       }
     }
   },
   
   "postCreateCommand": "bash .devcontainer/setup.sh",
   
-  "forwardPorts": [8888, 6006],
+  // Forward ports for Jupyter and development servers
+  "forwardPorts": [8888, 8000, 5000],
+  "portsAttributes": {
+    "8888": {
+      "label": "Jupyter",
+      "onAutoForward": "notify"
+    }
+  },
   
+  // Optimized mounts for caching and performance
   "mounts": [
-    "source=${localWorkspaceFolder}/models,target=/workspace/models,type=bind,consistency=cached",
-    "source=${localWorkspaceFolder}/data,target=/workspace/data,type=bind,consistency=cached"
+    "source=pip-cache,target=/home/vscode/.cache/pip,type=volume",
+    "source=torch-cache,target=/tmp/torch_cache,type=volume"
   ],
   
   "remoteUser": "vscode",
   
-  "runArgs": [
-    "--gpus=all",
-    "--shm-size=8gb"
-  ],
-  
+  // Removed GPU-specific settings for free tier compatibility
   "containerEnv": {
-    "PYTORCH_CUDA_ALLOC_CONF": "max_split_size_mb:512",
-    "CUDA_VISIBLE_DEVICES": "0"
-  }
+    "PYTHONPATH": "/workspaces/TotalSegmentator_to_CoreML/src",
+    "TORCH_HOME": "/tmp/torch_cache",
+    "OMP_NUM_THREADS": "2"
+  },
+  
+  // Keep container running efficiently
+  "shutdownAction": "stopContainer"
 }
