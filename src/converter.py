@@ -3,6 +3,12 @@ Core Converter Module
 Handles PyTorch to CoreML conversion for TotalSegmentator models
 """
 
+import os
+# Disable MKL-DNN before importing torch
+os.environ['PYTORCH_DISABLE_MKL'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['OMP_NUM_THREADS'] = '1'
+
 import torch
 import coremltools as ct
 import numpy as np
@@ -11,6 +17,10 @@ import logging
 from pathlib import Path
 import tempfile
 import json
+
+# Force disable MKL-DNN if available
+if hasattr(torch, '_C') and hasattr(torch._C, '_set_mkldnn_enabled'):
+    torch._C._set_mkldnn_enabled(False)
 
 
 class TotalSegmentatorConverter:
@@ -93,32 +103,41 @@ class TotalSegmentatorConverter:
         
         self.logger.debug("Tracing model with TorchScript")
         
-        # Handle models with multiple outputs
-        class ModelWrapper(torch.nn.Module):
+        # Create a wrapper that prevents MKL-DNN operations
+        class CPUOnlyModelWrapper(torch.nn.Module):
             def __init__(self, model):
                 super().__init__()
-                self.model = model
+                self.model = model.to('cpu')
+                # Disable all optimizations that might use MKL-DNN
+                for module in self.model.modules():
+                    if hasattr(module, 'inplace'):
+                        module.inplace = False
             
             def forward(self, x):
-                output = self.model(x)
+                # Force CPU execution
+                x = x.to('cpu')
+                with torch.backends.mkldnn.flags(enabled=False):
+                    output = self.model(x)
                 # Ensure single output tensor
                 if isinstance(output, (tuple, list)):
                     output = output[0]
-                return output
+                return output.to('cpu')
         
-        wrapped_model = ModelWrapper(model)
+        wrapped_model = CPUOnlyModelWrapper(model)
+        wrapped_model.eval()
         
         # Trace with strict=False to handle dynamic shapes
         with torch.no_grad():
-            traced = torch.jit.trace(
-                wrapped_model, 
-                example_input,
-                strict=False,
-                check_trace=False
-            )
+            with torch.backends.mkldnn.flags(enabled=False):
+                traced = torch.jit.trace(
+                    wrapped_model, 
+                    example_input.to('cpu'),
+                    strict=False,
+                    check_trace=False
+                )
         
-        # Optimize traced model
-        traced = torch.jit.optimize_for_inference(traced)
+        # Don't optimize for inference as it might introduce MKL-DNN ops
+        # traced = torch.jit.optimize_for_inference(traced)
         
         return traced
     

@@ -3,10 +3,20 @@
 Create dummy TotalSegmentator models for testing
 """
 
+import os
 import torch
 import torch.nn as nn
 from pathlib import Path
 import sys
+
+# Disable MKL-DNN before importing torch modules
+os.environ['PYTORCH_DISABLE_MKL'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['OMP_NUM_THREADS'] = '1'
+
+# Force CPU-only operations
+if hasattr(torch, '_C') and hasattr(torch._C, '_set_mkldnn_enabled'):
+    torch._C._set_mkldnn_enabled(False)
 
 # Add parent directory to path to import from src
 parent_dir = Path(__file__).parent.parent
@@ -45,11 +55,15 @@ def create_dummy_models(output_dir: Path):
         
         print(f"Creating {model_name} model...")
         
-        # Create model
-        model = create_totalsegmentator_model(
-            num_classes=config["num_classes"],
-            input_channels=1
-        )
+        # Create model with device explicitly set to CPU
+        with torch.device('cpu'):
+            model = create_totalsegmentator_model(
+                num_classes=config["num_classes"],
+                input_channels=1
+            )
+        
+        # Ensure model is on CPU from the start
+        model = model.to('cpu')
         
         # Initialize with random weights
         for param in model.parameters():
@@ -58,15 +72,29 @@ def create_dummy_models(output_dir: Path):
             else:
                 nn.init.uniform_(param, -0.1, 0.1)
         
-        # Ensure model is in CPU mode and not using MKL-DNN
-        model = model.cpu()
+        # Set to eval mode
         model.eval()
         
-        # Save state dict with _use_new_zipfile_serialization for compatibility
+        # Create a wrapper that ensures CPU operations
+        class CPUOnlyWrapper(nn.Module):
+            def __init__(self, model):
+                super().__init__()
+                self.model = model
+            
+            def forward(self, x):
+                # Ensure input is on CPU
+                x = x.to('cpu')
+                return self.model(x)
+        
+        # Wrap the model
+        wrapped_model = CPUOnlyWrapper(model)
+        wrapped_model.eval()
+        
+        # Save state dict with pickle protocol 2 for compatibility
         torch.save(
-            model.state_dict(), 
+            wrapped_model.state_dict(), 
             output_path, 
-            _use_new_zipfile_serialization=False
+            pickle_protocol=2
         )
         
         print(f"Saved {output_path}")

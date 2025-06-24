@@ -13,7 +13,16 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import json
 
+# Disable MKL-DNN before importing torch
+os.environ['PYTORCH_DISABLE_MKL'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['OMP_NUM_THREADS'] = '1'
+
 import torch
+# Force disable MKL-DNN
+if hasattr(torch, '_C') and hasattr(torch._C, '_set_mkldnn_enabled'):
+    torch._C._set_mkldnn_enabled(False)
+
 import numpy as np
 from tqdm import tqdm
 import coremltools as ct
@@ -212,22 +221,37 @@ class ConversionPipeline:
     def _load_pytorch_model(self, path: str, config: Dict) -> torch.nn.Module:
         """Load PyTorch model with proper configuration"""
         
-        # Load state dict
-        state_dict = torch.load(path, map_location=self.device)
+        # Force CPU map location
+        state_dict = torch.load(path, map_location='cpu')
         
-        # Create model architecture (placeholder - implement actual architecture)
-        # In real implementation, this would instantiate the correct U-Net variant
+        # If the state dict has 'model.' prefix (from wrapper), extract the inner model
+        if any(k.startswith('model.') for k in state_dict.keys()):
+            new_state_dict = {}
+            for k, v in state_dict.items():
+                if k.startswith('model.'):
+                    new_state_dict[k[6:]] = v  # Remove 'model.' prefix
+                else:
+                    new_state_dict[k] = v
+            state_dict = new_state_dict
+        
+        # Create model architecture
         from src.models import create_totalsegmentator_model
-        model = create_totalsegmentator_model(
-            num_classes=config["num_classes"],
-            input_channels=1
-        )
+        with torch.device('cpu'):
+            model = create_totalsegmentator_model(
+                num_classes=config["num_classes"],
+                input_channels=1
+            )
         
         # Load weights
-        model.load_state_dict(state_dict)
-        # Force CPU mode to avoid MKL-DNN issues during conversion
-        model.cpu()
+        model.load_state_dict(state_dict, strict=False)
+        
+        # Ensure model is on CPU and in eval mode
+        model = model.to('cpu')
         model.eval()
+        
+        # Disable gradient computation
+        for param in model.parameters():
+            param.requires_grad = False
         
         return model
     

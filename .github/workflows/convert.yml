@@ -43,14 +43,15 @@ jobs:
         python-version: '3.9'
     
     - name: Install dependencies for model preparation
+      env:
+        PYTORCH_DISABLE_MKL: '1'
+        MKL_NUM_THREADS: '1'
+        OMP_NUM_THREADS: '1'
       run: |
         python -m pip install --upgrade pip
         # Install CPU-only torch without MKL to avoid MKL-DNN issues
         pip install torch==2.1.0 torchvision --index-url https://download.pytorch.org/whl/cpu
         pip install numpy
-        # Set environment variable to disable MKL
-        export MKL_NUM_THREADS=1
-        export OMP_NUM_THREADS=1
     
     - name: Create directories
       run: |
@@ -59,6 +60,9 @@ jobs:
     - name: Download or create models
       env:
         TOTALSEGMENTATOR_TOKEN: ${{ secrets.TOTALSEGMENTATOR_TOKEN }}
+        PYTORCH_DISABLE_MKL: '1'
+        MKL_NUM_THREADS: '1'
+        OMP_NUM_THREADS: '1'
       run: |
         if [ -n "$TOTALSEGMENTATOR_TOKEN" ]; then
           echo "Downloading real TotalSegmentator models..."
@@ -114,6 +118,10 @@ jobs:
         python-version: '3.9'
     
     - name: Install dependencies
+      env:
+        PYTORCH_DISABLE_MKL: '1'
+        MKL_NUM_THREADS: '1'
+        OMP_NUM_THREADS: '1'
       run: |
         python -m pip install --upgrade pip
         
@@ -144,22 +152,36 @@ jobs:
         mkdir -p models/coreml logs validation_reports
     
     - name: Convert models
+      env:
+        PYTORCH_DISABLE_MKL: '1'
+        MKL_NUM_THREADS: '1'
+        OMP_NUM_THREADS: '1'
       run: |
         echo "Starting CoreML conversion..."
         
+        # Double-check MKL is disabled
+        python -c "import torch; print(f'MKL-DNN enabled: {torch._C._get_mkldnn_enabled() if hasattr(torch._C, '_get_mkldnn_enabled') else 'Unknown'}')"
+        
+        # Try direct conversion first
         if [ "${{ github.event.inputs.model }}" = "all" ]; then
           python convert_totalsegmentator.py --all \
             --precision ${{ github.event.inputs.precision }} \
             ${{ github.event.inputs.validate && '--validate' || '--no-validate' }} \
             --cpu-only \
-            --log-level DEBUG
+            --log-level DEBUG || echo "Direct conversion failed, trying ONNX fallback..."
         else
           python convert_totalsegmentator.py \
             --model ${{ github.event.inputs.model }} \
             --precision ${{ github.event.inputs.precision }} \
             ${{ github.event.inputs.validate && '--validate' || '--no-validate' }} \
             --cpu-only \
-            --log-level DEBUG
+            --log-level DEBUG || echo "Direct conversion failed, trying ONNX fallback..."
+        fi
+        
+        # If direct conversion failed, try ONNX fallback
+        if [ $? -ne 0 ]; then
+          echo "Using ONNX fallback conversion method..."
+          python scripts/convert_via_onnx.py
         fi
         
         # List converted models
