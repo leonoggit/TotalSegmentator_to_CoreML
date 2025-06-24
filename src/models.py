@@ -53,18 +53,18 @@ class UpBlock(nn.Module):
     def forward(self, x, skip):
         x = self.up(x)
         
-        # Handle size mismatches
-        if x.shape != skip.shape:
-            # Pad or crop to match skip connection size
-            diff_d = skip.size(2) - x.size(2)
-            diff_h = skip.size(3) - x.size(3)
-            diff_w = skip.size(4) - x.size(4)
-            
-            x = F.pad(x, [
-                diff_w // 2, diff_w - diff_w // 2,
-                diff_h // 2, diff_h - diff_h // 2,
-                diff_d // 2, diff_d - diff_d // 2
-            ])
+        # Handle size mismatches - always calculate padding for TorchScript compatibility
+        # Calculate differences (will be 0 if sizes match)
+        diff_d = skip.size(2) - x.size(2)
+        diff_h = skip.size(3) - x.size(3)
+        diff_w = skip.size(4) - x.size(4)
+        
+        # Apply padding if needed (padding by 0 has no effect)
+        x = F.pad(x, [
+            diff_w // 2, diff_w - diff_w // 2,
+            diff_h // 2, diff_h - diff_h // 2,
+            diff_d // 2, diff_d - diff_d // 2
+        ])
         
         x = torch.cat([x, skip], dim=1)
         x = self.conv_block(x)

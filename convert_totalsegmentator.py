@@ -119,22 +119,14 @@ class ConversionPipeline:
             # Prepare example input
             example_input = self._create_example_input(config["input_shape"])
             
-            # Trace model
-            self.logger.info("Tracing model with TorchScript")
-            traced_model = torch.jit.trace(pytorch_model, example_input)
-            
-            # Convert to CoreML
-            self.logger.info("Converting to CoreML")
-            coreml_model = self._convert_to_coreml(
-                traced_model, 
-                config,
-                model_name
+            # Convert to CoreML using the converter (handles tracing, optimization, and saving)
+            coreml_model = self.converter.convert(
+                model_name=model_name,
+                pytorch_model=pytorch_model,
+                example_input=example_input,
+                output_path=output_path,
+                optimize=optimize
             )
-            
-            # Optimize if requested
-            if optimize:
-                self.logger.info("Optimizing CoreML model")
-                coreml_model = self._optimize_model(coreml_model)
             
             # Validate if requested
             if validate:
@@ -145,11 +137,6 @@ class ConversionPipeline:
                     config
                 )
                 self._log_validation_results(model_name, validation_results)
-            
-            # Save model
-            self.logger.info(f"Saving CoreML model to {output_path}")
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            coreml_model.save(output_path)
             
             # Log summary
             elapsed_time = time.time() - start_time
