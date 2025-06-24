@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.utils import create_totalsegmentator_model
+from src.models import create_totalsegmentator_model
 
 
 MODEL_CONFIGS = {
